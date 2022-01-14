@@ -1,0 +1,141 @@
+const express = require("express");
+const app = express();
+const bodyParser = require("body-parser");
+const ejs = require("ejs");
+const mongoose = require("mongoose");
+
+app.use(bodyParser.urlencoded({extended: true}));
+
+app.use(express.static("public"));
+
+app.get("/", function(req, res){
+
+  res.sendFile(__dirname + "/index.html");
+
+});
+const uri = "mongodb://localhost:27017/wikiDB";
+
+mongoose.connect(uri);
+
+const articleSchema = new mongoose.Schema({
+  title: String,
+  content: String
+});
+
+const Article = mongoose.model("Article", articleSchema);
+
+
+//////////////////////////////Requests targeting all articles///////////////////////////////
+
+
+app.route("/articles")
+.get(function(req, res){
+
+  Article.find(function(err,articles){
+    if(err){
+      console.log(err);
+
+    }
+    else{
+        // console.log(fruits);
+        mongoose.connection.close();
+        res.send(articles);
+        articles.forEach(function(article){
+          console.log(article);
+        });
+    }
+  });
+
+
+
+
+})
+.post(function(req, res){
+  const newArticle = new Article({
+    title: req.body.title,
+    content: req.body.content
+  });
+  newArticle.save(function(err){
+    if(err){
+      res.send(err);
+    }
+    else{
+      res.send("Successfully added the new article.");
+    }
+  });
+})
+.delete(function(req, res){
+  Article.deleteMany(function(err){
+      if(err){
+        res.send(err);
+      }
+      else{
+        res.send("Successfully deleted all articles.");
+      }
+  });
+});
+
+////////////////////////////////////////REQUESTS TARGETING A SINGLE ARTICLE//////////////////////////////////////
+
+
+app.route("/articles/:articleTitle")
+
+.get(function(req,res){
+
+  Article.findOne({ title: req.params.articleTitle}, function(err, foundArticle){
+    if(foundArticle){
+      res.send(foundArticle);
+    }
+    else{
+      res.send("No article was found.");
+    }
+  });
+})
+.put(function(req,res){
+  Article.updateOne(
+    {title: req.params.articleTitle},
+    {title: req.body.title, content: req.body.content},
+    function(err){
+      if(!err){
+        res.send("Successfully updated article");
+      }
+      else{
+        res.send("error");
+      }
+    }
+  )
+})
+
+.patch(function(req,res){
+  Article.updateOne(
+    {title: req.params.articleTitle},
+    {$set: req.body},
+    function(err){
+      if(!err){
+      res.send("Successfully updated article");
+    }
+    else{
+      res.send("error");
+    }
+  })
+})
+
+.delete(function(req,res){
+  Article.deleteOne(
+    {title: req.params.articleTitle},
+    function(err){
+      if(!err){
+        res.send("Successfully deleted the article");
+      }
+      else{
+        res.send(err);
+      }
+    }
+  )
+});
+
+
+
+app.listen(process.env.PORT || 3000, function(){
+  console.log("Server is running on port 3000");
+});
